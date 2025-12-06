@@ -218,7 +218,7 @@ from bmi_calculator import bmi_calculator_page
 # Sidebar navigation
 with st.sidebar:
     try:
-        image = Image.open("image\\logo.png")
+        image = Image.open("image/logo.png")
         st.image(image, width=300)
     except FileNotFoundError:
         st.image(
