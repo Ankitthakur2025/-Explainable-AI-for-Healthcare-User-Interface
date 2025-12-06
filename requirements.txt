@@ -25,9 +25,9 @@ MarkupSafe==3.0.3
 matplotlib==3.10.7
 narwhals==2.13.0
 numba==0.62.1
-numpy==2.3.5
+numpy
 packaging==25.0
-pandas==2.3.3
+pandas
 pillow==12.0.0
 plotly==6.5.0
 protobuf==6.33.2
@@ -58,5 +58,6 @@ urllib3==2.6.0
 watchdog==6.0.0
 xgboost==3.1.2
 ipython==8.29.0
+
 
 
