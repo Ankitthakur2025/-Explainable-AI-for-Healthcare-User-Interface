@@ -15,7 +15,6 @@ shap.initjs()
 def local_css():
     st.markdown("""
         <style>
-        /* Main Headers */
         h1 {
             color: #00FFFF; 
             font-family: 'Helvetica Neue', sans-serif;
@@ -26,6 +25,7 @@ def local_css():
             color: #E0E0E0;
         }
 
+        /* Metric Cards */
         div[data-testid="stMetric"] {
             background-color: #FFFFFF !important;
             padding: 20px !important;
@@ -46,11 +46,7 @@ def local_css():
             font-weight: 700 !important;
         }
 
-        .stSelectbox label {
-            color: #00FFFF !important;
-            font-weight: bold;
-        }
-
+        /* Button */
         .stButton>button {
             width: 100%;
             background: linear-gradient(90deg, #008B8B 0%, #00FFFF 100%);
@@ -59,12 +55,6 @@ def local_css():
             border: none;
             padding: 0.8rem;
             border-radius: 10px;
-            transition: all 0.3s ease;
-        }
-        .stButton>button:hover {
-            transform: scale(1.02);
-            box-shadow: 0px 0px 15px rgba(0, 255, 255, 0.6);
-            color: #000000;
         }
 
         .result-box {
@@ -74,30 +64,30 @@ def local_css():
             border-left: 5px solid #00FFFF;
             margin-top: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
-            color: #000 !important;
-        }
-        .result-box * {
             color: #000 !important;
         }
         </style>
     """, unsafe_allow_html=True)
 
 
+
+# ==========================================================
+#                 GENERAL DISEASE PAGE
+# ==========================================================
 def general_disease_page():
+
     local_css()
 
-    st.markdown("<h1 style='text-align:center;'>General Illness Prediction</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#AAAAAA;'>Select your symptoms below to generate an AI-powered diagnosis.</p>", unsafe_allow_html=True)
+    st.markdown(
+        "<h1 style='text-align:center;'>General Illness Prediction</h1>",
+        unsafe_allow_html=True
+    )
 
-    # -------------------- LOAD FILES --------------------
-    base_path = "models/"
-    
+    st.markdown("<p style='text-align:center; color:#AAAAAA;'>Select symptoms below.</p>", unsafe_allow_html=True)
+
+    # ---------------------- LOAD FILES ----------------------
     def load_pickle(filename):
-        path = os.path.join(base_path, filename)
-        if os.path.exists(path):
-            return pickle.load(open(path, "rb"))
-        elif os.path.exists(filename):
+        if os.path.exists(filename):
             return pickle.load(open(filename, "rb"))
         else:
             return None
@@ -106,20 +96,37 @@ def general_disease_page():
     label_encoder = load_pickle("label_encoder.pkl")
     symptoms_list = load_pickle("symptom_list.pkl")
 
-    # FIX: Prevent NameError even if old leftover code exists
-    selector = None
-    scaler = None
-    pca = None
+    scaler = load_pickle("scaler.pkl")
+    selector = load_pickle("selector.pkl")
+    pca = load_pickle("pca.pkl")
 
-    if not model or not symptoms_list:
-        st.error(f"Critical files missing. Please check paths. Looking in: {base_path}")
+    # ALWAYS define selector safely
+    if selector is None:
+        selector_available = False
+    else:
+        selector_available = True
+
+    if symptoms_list is None:
+        st.error("❌ Symptoms list not found. Upload symptom_list.pkl")
         return
 
+    if model is None:
+        st.error("❌ Model file missing. Upload best_model.pkl")
+        return
+
+    # --------------------- FEATURE NAMES SAFE LOGIC ---------------------
     final_feature_names = list(symptoms_list)
+
+    if selector_available:
+        try:
+            support = selector.get_support()
+            final_feature_names = [name for name, keep in zip(symptoms_list, support) if keep]
+        except:
+            pass
 
     symptoms_dropdown = ["None"] + symptoms_list
 
-    # ------------------- SYMPTOM INPUTS ------------------------
+    # ----------------------- UI INPUTS ----------------------
     with st.expander("Symptom Checker", expanded=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -132,115 +139,112 @@ def general_disease_page():
 
     selected = [s1, s2, s3, s4, s5]
 
-    # ------------------- INPUT VECTOR -------------------
+    # ----------------------- INPUT VECTOR ----------------------
     input_vec = np.zeros(len(symptoms_list))
+
     for s in selected:
         if s != "None":
-            try:
+            if s in symptoms_list:
                 idx = symptoms_list.index(s)
                 input_vec[idx] = 1
-            except:
-                pass
 
-    # ------------------- PREPROCESS -------------------
+    # ----------------------- PREPROCESS ----------------------
     def preprocess(v):
-        return v.reshape(1, -1)
+        X = v.reshape(1, -1)
+        if scaler is not None:
+            X = scaler.transform(X)
+        if selector_available:
+            X = selector.transform(X)
+        if pca is not None:
+            X = pca.transform(X)
+        return X
+
 
     # ==========================================================
-    #                   PREDICTION + XAI
+    #                      PREDICTION
     # ==========================================================
     if st.button("Analyze Health Condition"):
 
         if all(s == "None" for s in selected):
-            st.error("⚠️ Please select at least one symptom.")
+            st.error("⚠️ Select at least one symptom.")
             return
 
+        processed = preprocess(input_vec)
+
+        proba = model.predict_proba(processed)[0]
+        pred_raw = model.predict(processed)[0]
+
+        if label_encoder:
+            pred_label = label_encoder.inverse_transform([int(pred_raw)])[0]
+        else:
+            pred_label = f"Class {pred_raw}"
+
+        # ------------------- RESULT BOX -------------------
+        st.markdown(f"""
+        <div class="result-box">
+            <h2>🧬 Diagnosis Result</h2>
+            <h3 style="color:#00CCCC;">{pred_label}</h3>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.metric("Confidence", f"{np.max(proba)*100:.1f}%")
+
+        st.write("---")
+        st.subheader("Explainable AI (SHAP)")
+
+        # ==========================================================
+        #               SHAP EXPLAINER (SAFE MODE)
+        # ==========================================================
         try:
-            processed = preprocess(input_vec)
+            background = np.zeros_like(processed)
 
-            # -----------------------------------------
-            # 1. PREDICTION
-            # -----------------------------------------
-            try:
-                proba = model.predict_proba(processed)[0]
-            except:
-                proba = np.array([1.0])
+            explainer = shap.KernelExplainer(model.predict_proba, background)
+            shap_vals = explainer.shap_values(processed, nsamples=80)
 
-            pred_raw = model.predict(processed)[0]
+            target_idx = int(pred_raw)
+            shap_values = shap_vals[target_idx][0]
 
-            if label_encoder:
-                pred_label = label_encoder.inverse_transform([int(pred_raw)])[0]
+            # MATCH FEATURE NAMES SAFELY
+            if len(shap_values) == len(final_feature_names):
+                feature_names = final_feature_names
             else:
-                pred_label = f"Class {pred_raw}"
+                feature_names = [f"Feature {i}" for i in range(len(shap_values))]
 
-            st.markdown(f"""
-            <div class="result-box">
-                <h2>🧬 Diagnosis Result</h2>
-                <h3 style="color:#00FFFF;">{pred_label}</h3>
-            </div>
-            """, unsafe_allow_html=True)
+            explanation = shap.Explanation(
+                values=shap_values,
+                base_values=explainer.expected_value[target_idx],
+                data=processed[0],
+                feature_names=feature_names
+            )
 
-            st.metric("Confidence Score", f"{np.max(proba)*100:.1f}%")
+            # ---------------- WATERFALL ---------------
+            st.markdown("#### 🔍 SHAP Waterfall Chart")
+            fig, ax = plt.subplots(figsize=(8,6))
+            shap.plots.waterfall(explanation, show=False, max_display=10)
+            st.pyplot(fig)
+            plt.clf()
 
-            st.write("---")
-            st.subheader("Why did the AI make this prediction?")
-            st.caption("Explainable AI (SHAP) shows which symptoms influenced the prediction.")
+            # ---------------- BAR PLOT ---------------
+            st.markdown("#### 📊 Feature Importance (Top Factors)")
+            shap_df = pd.DataFrame({
+                "Feature": feature_names,
+                "SHAP": shap_values,
+                "ABS": np.abs(shap_values)
+            }).sort_values("ABS", ascending=False).head(10)
 
-            # ==================================================
-            #                   SHAP
-            # ==================================================
-            with st.spinner("Running Explainable AI (SHAP)..."):
-
-                background = np.zeros_like(processed)
-
-                pred_fn = model.predict_proba if hasattr(model, "predict_proba") else model.predict
-                
-                explainer = shap.KernelExplainer(pred_fn, background)
-                shap_vals = explainer.shap_values(processed, nsamples=100)
-
-                target_idx = int(pred_raw)
-                shap_class = shap_vals[target_idx] if isinstance(shap_vals, list) else shap_vals[0]
-                shap_class = np.array(shap_class).reshape(-1)
-
-                explanation = shap.Explanation(
-                    values=shap_class,
-                    base_values=0,
-                    data=processed[0],
-                    feature_names=symptoms_list
-                )
-
-                # -------- SHAP WATERFALL PLOT ----------
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    st.markdown("### SHAP Waterfall Plot")
-                    fig, ax = plt.subplots(figsize=(7,5))
-                    shap.plots.waterfall(explanation, show=False, max_display=10)
-                    st.pyplot(fig)
-                    plt.clf()
-
-                # -------- SHAP BAR CHART ----------
-                with col2:
-                    st.markdown("### Top Contributing Symptoms")
-                    df = pd.DataFrame({
-                        "Feature": explanation.feature_names,
-                        "SHAP": explanation.values,
-                        "Importance": np.abs(explanation.values)
-                    }).sort_values("Importance", ascending=False).head(10)
-
-                    fig, ax = plt.subplots(figsize=(7,5))
-                    colors = ['#00FFFF' if v > 0 else '#FF4B4B' for v in df.SHAP]
-                    ax.barh(df.Feature, df.SHAP, color=colors)
-                    ax.invert_yaxis()
-                    st.pyplot(fig)
-                    plt.clf()
+            fig, ax = plt.subplots(figsize=(7,5))
+            ax.barh(shap_df["Feature"], shap_df["SHAP"])
+            ax.invert_yaxis()
+            st.pyplot(fig)
+            plt.clf()
 
         except Exception as e:
-            st.error(f"Error: {e}")
-            import traceback
-            traceback.print_exc()
+            st.warning(f"SHAP explanation unavailable: {e}")
+
+        st.write("---")
 
 
+# RUN PAGE
 if __name__ == "__main__":
     st.set_page_config(page_title="Disease Predictor", layout="wide")
     general_disease_page()
