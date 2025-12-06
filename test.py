@@ -18,7 +18,7 @@ def get_base64_gif(file_path):
 
 def home_page():
     
-    gif_path = Path(r"image\online-doctor-giving-advice-help-laptop.png")
+    gif_path = Path(r"image/online-doctor-giving-advice-help-laptop.png")
 
     # Load the GIF in base64 format
     gif_data = get_base64_gif(gif_path)
