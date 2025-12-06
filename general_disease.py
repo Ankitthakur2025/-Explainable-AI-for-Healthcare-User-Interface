@@ -118,9 +118,6 @@ def general_disease_page():
     label_encoder = load_pickle("label_encoder.pkl")
     symptoms_list = load_pickle("symptom_list.pkl")
 
-    scaler = load_pickle("scaler.pkl")
-    selector = load_pickle("selector.pkl")
-    pca = load_pickle("pca.pkl")
 
     if not model or not symptoms_list:
         st.error(f"Critical files missing. Please check paths. Looking in: {base_path}")
