@@ -151,7 +151,7 @@ def diabetes_page():
         bmi = st.number_input("Body Mass Index (BMI)", 10.0, 70.0, 25.0, step=0.1)
     with c3:
         try:
-            st.image(r"image\diabetes.png", width=250)
+            st.image(r"image/diabetes.png", width=250)
         except Exception:
             st.image("https://via.placeholder.com/250x150.png?text=Diabetes+Care", width=250)
 
