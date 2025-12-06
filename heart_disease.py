@@ -44,7 +44,7 @@ div[data-testid="metric-container"] * {
 
 # --- Load model ---
 try:
-    heart_disease_model = pickle.load(open(r"D:\Research work\Mplementation\Web app\models\heart_model.pkl", "rb"))
+    heart_disease_model = pickle.load(open(r"models/heart_model.pkl", "rb"))
 except FileNotFoundError:
     st.error("Model file not found. Please check the path and ensure the model is available.")
     # Dummy fallback model
@@ -113,7 +113,7 @@ def heart_disease_page():
 
     with col4:
         try:
-            st.image(Image.open(r"image\heart.jpg"), width=300)
+            st.image(Image.open(r"image/heart.jpg"), width=300)
         except:
             st.image("https://via.placeholder.com/300x150.png?text=Heart", width=300)
 
