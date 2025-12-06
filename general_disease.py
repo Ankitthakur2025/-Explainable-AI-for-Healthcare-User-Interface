@@ -6,13 +6,12 @@ import os
 import shap
 import matplotlib.pyplot as plt
 
-# Safe SHAP init (prevents Render crash)
+# Safe SHAP init – avoids crash on Render if IPython is not fully available
 try:
     import IPython
     shap.initjs()
 except Exception:
     pass
-
 
 # ---------------------------------------------------------
 #                 CUSTOM CSS & STYLING
@@ -20,7 +19,78 @@ except Exception:
 def local_css():
     st.markdown("""
         <style>
-        /* CSS Removed for brevity (your CSS stays unchanged) */
+        /* Main Headers */
+        h1 {
+            color: #00FFFF; 
+            font-family: 'Helvetica Neue', sans-serif;
+            font-weight: 700;
+            text-shadow: 0px 0px 10px rgba(0, 255, 255, 0.3);
+        }
+        h3 {
+            color: #E0E0E0;
+        }
+
+        /* FIX: Metric card visibility */
+        div[data-testid="stMetric"] {
+            background-color: #FFFFFF !important;      /* FIX BLACK BOX */
+            padding: 20px !important;
+            border-radius: 12px !important;
+            text-align: center !important;
+            box-shadow: 0px 4px 10px rgba(0,255,255,0.2);
+            color: #000 !important;
+        }
+
+        div[data-testid="stMetricValue"] {
+            color: #000000 !important;                 /* FIX TEXT */
+            font-size: 2.8rem !important;
+            font-weight: 800 !important;
+        }
+
+        div[data-testid="stMetricLabel"] {
+            color: #004d39 !important;                 /* FIX LABEL */
+            font-weight: 700 !important;
+        }
+
+        /* Selectbox Styling */
+        .stSelectbox label {
+            color: #00FFFF !important;
+            font-weight: bold;
+        }
+
+        /* Analyze Button */
+        .stButton>button {
+            width: 100%;
+            background: linear-gradient(90deg, #008B8B 0%, #00FFFF 100%);
+            color: #000000;
+            font-weight: bold;
+            border: none;
+            padding: 0.8rem;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        .stButton>button:hover {
+            transform: scale(1.02);
+            box-shadow: 0px 0px 15px rgba(0, 255, 255, 0.6);
+            color: #000000;
+        }
+
+        /* Results Container — FIX BLACK BOX */
+        .result-box {
+            background-color: #FFFFFF !important;
+            padding: 20px;
+            border-radius: 15px;
+            border-left: 5px solid #00FFFF;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+            color: #000 !important;
+        }
+
+        /* Fix text inside result box */
+        .result-box * {
+            color: #000 !important;
+        }
+
         </style>
     """, unsafe_allow_html=True)
 
@@ -29,29 +99,40 @@ def general_disease_page():
     # Apply CSS
     local_css()
 
-    st.markdown("<h1 style='text-align:center;'>General Illness Prediction</h1>", unsafe_allow_html=True)
+    st.markdown(
+        "<h1 style='text-align:center;'>General Illness (common health conditions) Prediction</h1>",
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        "<p style='text-align:center; color:#AAAAAA;'>Select your symptoms below to generate an AI-powered diagnosis.</p>",
+        unsafe_allow_html=True
+    )
 
     # -------------------- LOAD FILES --------------------
-    base_path = "models/"  # <- Folder where ALL pkl files must exist
+    # All .pkl files must be in models/ folder in your repo
+    base_path = "models/"
 
     def load_pickle(filename):
         path = os.path.join(base_path, filename)
         if os.path.exists(path):
             return pickle.load(open(path, "rb"))
+        elif os.path.exists(filename):
+            # fallback: current folder
+            return pickle.load(open(filename, "rb"))
         else:
             return None
 
-    # MAIN MODEL FILES
+    # Core model + encoders
     model = load_pickle("best_model.pkl")
     label_encoder = load_pickle("label_encoder.pkl")
     symptoms_list = load_pickle("symptom_list.pkl")
 
-    # OPTIONAL PREPROCESSORS
+    # Optional preprocessors
     scaler = load_pickle("scaler.pkl")
     selector = load_pickle("selector.pkl")
     pca = load_pickle("pca.pkl")
 
-    # ---- FIX: Prevent NameError ----
+    # Ensure variables exist even if files missing (prevents NameError)
     if scaler is None:
         scaler = None
     if selector is None:
@@ -59,27 +140,26 @@ def general_disease_page():
     if pca is None:
         pca = None
 
-    # Ensure main model exists
-    if model is None or symptoms_list is None:
-        st.error("❌ Required model files missing in 'models/' folder.")
+    if (model is None) or (symptoms_list is None):
+        st.error(f"❌ Critical files missing. Please check that required .pkl files exist in: {base_path}")
         return
 
     # -----------------------------------------------------------
-    #     FEATURE NAME HANDLING
+    #     FEATURE NAMES (handle selector / feature selection)
     # -----------------------------------------------------------
     final_feature_names = list(symptoms_list)
-
     if selector is not None:
         try:
             support = selector.get_support()
             final_feature_names = [name for name, kept in zip(symptoms_list, support) if kept]
-        except:
+        except Exception:
+            # if selector is not standard sklearn object, ignore
             final_feature_names = list(symptoms_list)
 
     symptoms_dropdown = ["None"] + symptoms_list
 
     # ------------------- UI INPUTS ------------------------
-    with st.expander("Symptom Checker", expanded=True):
+    with st.expander("**Symptom Checker** (Click to expand/collapse)", expanded=True):
         col1, col2 = st.columns(2)
         with col1:
             s1 = st.selectbox("Symptom 1", symptoms_dropdown)
@@ -98,7 +178,8 @@ def general_disease_page():
             try:
                 idx = symptoms_list.index(s)
                 input_vec[idx] = 1
-            except:
+            except ValueError:
+                # symptom not found in list (shouldn't happen)
                 pass
 
     # ------------------- PREPROCESS -------------------
@@ -108,9 +189,12 @@ def general_disease_page():
             X = scaler.transform(X)
         if selector is not None:
             X = selector.transform(X)
+        # If PCA is used, SHAP explains PCA components, not direct symptoms
         if pca is not None:
             X = pca.transform(X)
         return X
+
+    st.write("")  # spacer
 
     # ==========================================================
     #                   PREDICTION + XAI
@@ -118,62 +202,189 @@ def general_disease_page():
     if st.button("Analyze Health Condition"):
 
         if all(s == "None" for s in selected):
-            st.error("⚠️ Please select at least one symptom.")
+            st.error("⚠️ Please select at least one symptom to analyze.")
             return
 
-        processed = preprocess(input_vec)
-
-        # ---------------- PREDICTION ----------------
         try:
-            proba = model.predict_proba(processed)[0]
-        except:
-            proba = np.array([1.0])
+            processed = preprocess(input_vec)
 
-        pred_raw = model.predict(processed)[0]
+            # -----------------------------------------
+            # 1. PREDICTION
+            # -----------------------------------------
+            try:
+                proba = model.predict_proba(processed)[0]
+                is_multiclass = (len(proba) > 1)
+            except Exception:
+                # if model has no predict_proba
+                proba = np.array([1.0])
+                is_multiclass = False
 
-        if label_encoder:
-            pred_label = label_encoder.inverse_transform([int(pred_raw)])[0]
-        else:
-            pred_label = f"Class {pred_raw}"
+            pred_raw = model.predict(processed)[0]
 
-        st.success(f"🧬 Predicted Illness: **{pred_label}**")
-        st.metric("Confidence Score", f"{np.max(proba)*100:.1f}%")
+            if label_encoder:
+                try:
+                    idx_to_decode = int(pred_raw)
+                    pred_label = label_encoder.inverse_transform([idx_to_decode])[0]
+                except Exception:
+                    pred_label = f"Class {pred_raw}"
+            else:
+                pred_label = f"Class {pred_raw}"
 
-        st.write("---")
-        st.subheader("Explainable AI (SHAP)")
-        st.caption("Understanding which symptoms influenced the prediction.")
+            # ------------------- RESULT DISPLAY -------------------
+            st.markdown(f"""
+            <div class="result-box">
+                <h2 style="margin-top:0; color:#FFFFFF;">🧬 Diagnosis Result</h2>
+                <h3 style="color:#00FFFF;">{pred_label}</h3>
+            </div>
+            """, unsafe_allow_html=True)
 
-        # ---------------- SHAP ----------------
-        try:
-            background = np.zeros_like(processed)
-            pred_fn = model.predict_proba if hasattr(model, "predict_proba") else model.predict
+            c1, c2, c3 = st.columns([1, 1, 1])
+            with c2:
+                st.metric("Confidence Score", f"{np.max(proba) * 100:.1f}%")
 
-            explainer = shap.KernelExplainer(pred_fn, background)
-            shap_vals = explainer.shap_values(processed, nsamples=80)
+            st.write("---")
+            st.subheader("Why did the AI make this prediction?")
+            st.caption("The charts below show which symptoms contributed most to this diagnosis.")
 
-            # Extract SHAP for predicted class
-            target_idx = int(pred_raw)
-            shap_class_values = shap_vals[target_idx] if isinstance(shap_vals, list) else shap_vals[0]
+            # ------------------- SHAP EXPLANATION -------------------
+            with st.spinner("Running Explainable AI (SHAP)..."):
+                background = np.zeros_like(processed)
 
-            explanation = shap.Explanation(
-                values=shap_class_values.flatten(),
-                base_values=explainer.expected_value[target_idx] if isinstance(explainer.expected_value, list) else explainer.expected_value,
-                data=processed.flatten(),
-                feature_names=final_feature_names
-            )
+                if hasattr(model, "predict_proba"):
+                    pred_fn = model.predict_proba
+                else:
+                    pred_fn = model.predict
 
-            # Waterfall plot
-            fig, ax = plt.subplots(figsize=(8, 6))
-            shap.plots.waterfall(explanation, show=False)
-            st.pyplot(fig)
-            plt.clf()
+                explainer = shap.KernelExplainer(pred_fn, background)
+                shap_vals = explainer.shap_values(processed, nsamples=100)
+
+                # SAFE EXTRACT LOGIC
+                target_idx = int(pred_raw)
+                shap_class_values = None
+                base_val = 0.0
+
+                def get_expected_value(exp_val, idx):
+                    if isinstance(exp_val, (list, np.ndarray)):
+                        arr = np.array(exp_val)
+                        if arr.ndim > 0 and len(arr) > idx:
+                            return float(arr[idx])
+                        elif arr.ndim > 0:
+                            return float(arr[0])
+                        else:
+                            return float(arr)
+                    return float(exp_val)
+
+                if isinstance(shap_vals, list):
+                    # Multiclass: list of arrays
+                    if target_idx < len(shap_vals):
+                        shap_class_values = np.array(shap_vals[target_idx]).reshape(-1)
+                        base_val = get_expected_value(explainer.expected_value, target_idx)
+                    else:
+                        shap_class_values = np.array(shap_vals[0]).reshape(-1)
+                        base_val = get_expected_value(explainer.expected_value, 0)
+
+                elif isinstance(shap_vals, np.ndarray):
+                    # Various possible shapes for shap_vals
+                    if shap_vals.shape == (1, processed.shape[1]):
+                        shap_class_values = shap_vals[0]
+                        base_val = get_expected_value(explainer.expected_value, 0)
+                    elif shap_vals.shape[0] > 1 and shap_vals.shape[1] == processed.shape[1]:
+                        if target_idx < shap_vals.shape[0]:
+                            shap_class_values = shap_vals[target_idx]
+                            base_val = get_expected_value(explainer.expected_value, target_idx)
+                        else:
+                            shap_class_values = shap_vals[0]
+                            base_val = get_expected_value(explainer.expected_value, 0)
+                    elif len(shap_vals.shape) == 3:
+                        # shape ~ (1, n_features, n_classes)
+                        if shap_vals.shape[2] > target_idx:
+                            shap_class_values = shap_vals[0, :, target_idx]
+                        else:
+                            shap_class_values = shap_vals[0, :, 0]
+                        base_val = get_expected_value(explainer.expected_value, target_idx)
+                    elif shap_vals.size == processed.shape[1]:
+                        shap_class_values = shap_vals.reshape(-1)
+                        base_val = get_expected_value(explainer.expected_value, 0)
+
+                if shap_class_values is not None:
+                    data_1d = processed[0].reshape(-1)
+                    values_1d = shap_class_values.reshape(-1)
+
+                    # FEATURE NAME MAPPING
+                    if len(final_feature_names) == len(values_1d):
+                        current_names = final_feature_names
+                    else:
+                        current_names = [f"Feature {i}" for i in range(len(values_1d))]
+
+                    explanation = shap.Explanation(
+                        values=values_1d,
+                        base_values=base_val,
+                        data=data_1d,
+                        feature_names=current_names
+                    )
+
+                    # PLOTS
+                    col_p1, col_p2 = st.columns(2)
+
+                    with col_p1:
+                        st.markdown("##### Explainable AI (SHAP) Visualization")
+                        fig, ax = plt.subplots(figsize=(8, 6))
+                        try:
+                            shap.plots.waterfall(explanation, show=False, max_display=10)
+                            st.pyplot(fig)
+                        except Exception:
+                            st.warning("Standard plot unavailable, switching to bar view.")
+                            shap.plots.bar(explanation, show=False, max_display=10)
+                            st.pyplot(fig)
+                        plt.clf()
+
+                    with col_p2:
+                        st.markdown("##### Top Factors Affecting Disease")
+                        shap_df = pd.DataFrame({
+                            "Feature": explanation.feature_names,
+                            "SHAP Value": explanation.values,
+                            "Importance": np.abs(explanation.values)
+                        }).sort_values("Importance", ascending=False).head(10)
+
+                        fig, ax = plt.subplots(figsize=(8, 6))
+                        colors = ['#00FFFF' if x > 0 else '#FF4B4B' for x in shap_df["SHAP Value"]]
+                        ax.barh(shap_df["Feature"], shap_df["SHAP Value"], color=colors)
+                        ax.set_xlabel("Impact on Model Output")
+                        ax.invert_yaxis()
+                        ax.set_facecolor("#F8FAFE")
+                        fig.patch.set_facecolor('#0E1117')
+                        ax.tick_params(colors='white')
+                        ax.xaxis.label.set_color('white')
+                        ax.spines['bottom'].set_color('white')
+                        ax.spines['top'].set_color('none')
+                        ax.spines['right'].set_color('none')
+                        ax.spines['left'].set_color('white')
+                        st.pyplot(fig)
+                        plt.clf()
+
+                    st.write("---")
+                    st.markdown("##### Visual Impact Analysis (Force Plot)")
+                    try:
+                        shap.plots.force(explanation, matplotlib=True, show=False)
+                        fig_force = plt.gcf()
+                        fig_force.set_size_inches(16, 4)
+                        fig_force.patch.set_facecolor("#EDEFF3")
+                        st.pyplot(fig_force)
+                        plt.clf()
+                    except Exception as e:
+                        st.warning(f"Force plot unavailable: {e}")
+
+                else:
+                    st.warning("Could not extract SHAP values for this prediction.")
 
         except Exception as e:
-            st.error(f"SHAP Error: {e}")
+            st.error(f"Analysis Error: {e}")
+            import traceback
+            traceback.print_exc()
 
     st.markdown("---")
 
 
 if __name__ == "__main__":
-    st.set_page_config(page_title="General Disease Predictor", layout="wide")
+    st.set_page_config(page_title="Disease Predictor", layout="wide")
     general_disease_page()
