@@ -103,7 +103,7 @@ def general_disease_page():
 
     # -------------------- LOAD FILES --------------------
     # UPDATE PATHS AS NECESSARY FOR YOUR LOCAL MACHINE
-    base_path = "D:/Research work/Mplementation/General Diseases/"
+    base_path = "models/"
     
     def load_pickle(filename):
         path = os.path.join(base_path, filename)
