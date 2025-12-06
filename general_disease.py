@@ -6,6 +6,11 @@ import os
 import shap
 import matplotlib.pyplot as plt
 
+try:
+    import IPython
+    shap.initjs()
+except Exception:
+    pass
 
 # ---------------------------------------------------------
 #                 CUSTOM CSS & STYLING
