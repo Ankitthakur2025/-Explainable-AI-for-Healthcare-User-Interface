@@ -6,8 +6,6 @@ import os
 import shap
 import matplotlib.pyplot as plt
 
-# Initialize JS for SHAP plots
-shap.initjs()
 
 # ---------------------------------------------------------
 #                 CUSTOM CSS & STYLING
