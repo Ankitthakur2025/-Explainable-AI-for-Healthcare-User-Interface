@@ -15,9 +15,9 @@ from catboost import CatBoostClassifier
 warnings.filterwarnings("ignore")
 
 # ---------------- CONFIG (change these to your paths) ----------------
-MODEL_PATH = r"D:\Research work\Mplementation\WEB APP\models\best_diabetes_model.pkl"
+MODEL_PATH = r"models/best_diabetes_model.pkl"
 # If available, set the CSV used for training so SHAP can use a representative background
-TRAINING_DATA_PATH = r"D:\Research work\Mplementation\WEB APP\diabetes_prediction_dataset.csv"
+TRAINING_DATA_PATH = r"diabetes_prediction_dataset.csv"
 
 @st.cache_resource
 def load_model(path):
