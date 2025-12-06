@@ -6,7 +6,8 @@ import os
 import shap
 import matplotlib.pyplot as plt
 
-
+# Initialize JS for SHAP plots
+shap.initjs()
 
 # ---------------------------------------------------------
 #                 CUSTOM CSS & STYLING
@@ -76,11 +77,9 @@ def local_css():
             box-shadow: 0 4px 6px rgba(0,0,0,0.15);
             color: #000 !important;
         }
-
         .result-box * {
             color: #000 !important;
         }
-
         </style>
     """, unsafe_allow_html=True)
 
@@ -92,7 +91,7 @@ def general_disease_page():
     st.markdown("<p style='text-align:center; color:#AAAAAA;'>Select your symptoms below to generate an AI-powered diagnosis.</p>", unsafe_allow_html=True)
 
     # -------------------- LOAD FILES --------------------
-    base_path = "models/"
+    base_path = "D:/Research work/Mplementation/General Diseases/"
     
     def load_pickle(filename):
         path = os.path.join(base_path, filename)
@@ -107,11 +106,15 @@ def general_disease_page():
     label_encoder = load_pickle("label_encoder.pkl")
     symptoms_list = load_pickle("symptom_list.pkl")
 
+    # FIX: Prevent NameError even if old leftover code exists
+    selector = None
+    scaler = None
+    pca = None
+
     if not model or not symptoms_list:
         st.error(f"Critical files missing. Please check paths. Looking in: {base_path}")
         return
 
-    # No selector, scaler, pca anymore
     final_feature_names = list(symptoms_list)
 
     symptoms_dropdown = ["None"] + symptoms_list
@@ -139,7 +142,7 @@ def general_disease_page():
             except:
                 pass
 
-    # ------------------- PREPROCESS (without scaler/selector/pca) -----------
+    # ------------------- PREPROCESS -------------------
     def preprocess(v):
         return v.reshape(1, -1)
 
@@ -181,10 +184,10 @@ def general_disease_page():
 
             st.write("---")
             st.subheader("Why did the AI make this prediction?")
-            st.caption("SHAP explains which symptoms influenced the model output.")
+            st.caption("Explainable AI (SHAP) shows which symptoms influenced the prediction.")
 
             # ==================================================
-            #                       SHAP
+            #                   SHAP
             # ==================================================
             with st.spinner("Running Explainable AI (SHAP)..."):
 
