@@ -91,7 +91,7 @@ def general_disease_page():
     st.markdown("<p style='text-align:center; color:#AAAAAA;'>Select your symptoms below to generate an AI-powered diagnosis.</p>", unsafe_allow_html=True)
 
     # -------------------- LOAD FILES --------------------
-    base_path = "D:/Research work/Mplementation/General Disease/"
+    base_path = "models/"
     
     def load_pickle(filename):
         path = os.path.join(base_path, filename)
