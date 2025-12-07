@@ -43,7 +43,7 @@ Unlike traditional black-box ML models, this system provides transparent explana
 - General Illness Prediction
 - BMI Calculator
 
-# ** UI Preview **
+# **UI Preview **
 
 
 
