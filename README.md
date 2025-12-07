@@ -20,25 +20,25 @@ Unlike traditional black-box ML models, this system provides transparent explana
 **1.Disease Prediction**
 
 - Heart Disease 
-Diabetes Prediction 
-Multi-disease symptom classification 
+- Diabetes Prediction 
+- Multi-disease symptom classification 
 
 **2.Explainable AI Integration**
 
-SHAP Summary Plot
-SHAP Force Plot
-SHAP Waterfall Plot
-Textual explanation panel
+- SHAP Summary Plot
+- SHAP Force Plot
+- SHAP Waterfall Plot
+- Textual explanation panel
 
 **3.Streamlit UI**
 
-Modern, clean & responsive
-Real-time predictions
-Visual analytics (charts, donut plots, bar plots)
+- Modern, clean & responsive
+- Real-time predictions
+- Visual analytics (charts, donut plots, bar plots)
 
 **4.Modules**
 
-Heart Disease Prediction
-Diabetes Analysis
-General Illness Prediction
-BMI Calculator
+- Heart Disease Prediction
+- Diabetes Analysis
+- General Illness Prediction
+- BMI Calculator
