@@ -1,4 +1,4 @@
-![system_architecture 1](https://github.com/user-attachments/assets/b31e3f57-867b-46b6-815e-3f2fb1acdf20)# **Explainable AI for Healthcar**
+# **Explainable AI for Healthcar**
 
 This repository contains the implementation of Explainable AI for Healthcare, a system developed as part of an MSc Computer Science dissertation. The project integrates Machine Learning, Explainable AI (XAI), and an interactive Streamlit-based web interface to predict multiple diseases—Heart Disease, Diabetes, and General Illness—while providing human-interpretable explanations using SHAP.
 
