@@ -42,3 +42,4 @@ Unlike traditional black-box ML models, this system provides transparent explana
 - Diabetes Analysis
 - General Illness Prediction
 - BMI Calculator
+- 
