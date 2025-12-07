@@ -18,11 +18,11 @@ Unlike traditional black-box ML models, this system provides transparent explana
 
 ## **Features**
 **1.Disease Prediction**
-
+'''
 Heart Disease 
 Diabetes Prediction 
 Multi-disease symptom classification 
-
+'''
 **2.Explainable AI Integration**
 
 SHAP Summary Plot
