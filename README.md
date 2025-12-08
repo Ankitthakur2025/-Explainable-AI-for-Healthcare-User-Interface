@@ -43,7 +43,7 @@ Unlike traditional black-box ML models, this system provides transparent explana
 - General Illness Prediction
 - BMI Calculator
 
-# **UI Preview**
+# **Live Demo**
 
 Deployed App 👉 https://explainable-ai-for-healthcare-user-509w.onrender.com/
 <img width="1911" height="824" alt="image" src="https://github.com/user-attachments/assets/e841392f-d48c-4fc2-a130-62ede8ac23c2" />
